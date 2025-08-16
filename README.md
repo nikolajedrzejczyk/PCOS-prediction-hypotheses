@@ -6,7 +6,7 @@ Celem badania była analiza danych medycznych dotyczących zespołu policystyczn
 
 Projekt został zrealizowany w języku **R** na podstawie zbioru danych [PCOS Dataset (Kaggle)](https://www.kaggle.com/datasets/shreyasvedpathak/pcos-dataset). [Czerwiec 2023]
 
-Projekt wykonany we współpracy.
+Projekt wykonany we współpracy w ramach studiów.
 
 ---
 
