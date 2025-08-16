@@ -5,7 +5,9 @@ Testing hypotheses on health and lifestyle factors influencing PCOS in R. (Badan
 Celem badania była analiza danych medycznych dotyczących zespołu policystycznych jajników (PCOS) oraz sprawdzenie zależności pomiędzy czynnikami zdrowotnymi a występowaniem choroby.  
 
 Projekt został zrealizowany w języku **R** na podstawie zbioru danych [PCOS Dataset (Kaggle)](https://www.kaggle.com/datasets/shreyasvedpathak/pcos-dataset). [Czerwiec 2023]
-   
+
+Projekt wykonany we współpracy.
+
 ---
 
 ## Hipotezy badawcze:
