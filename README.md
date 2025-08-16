@@ -33,7 +33,7 @@ Celem analizy było sprawdzenie, czy parametry zdrowotne mogą być pomocne w di
    - wizualizacje danych (histogramy, wykresy pudełkowe, wykresy punktowe) 
    - porównania pomiędzy grupami pacjentek z PCOS i bez PCOS
 
-4. **Budowa modeli regresji:**  
+4. **Budowa uogólnionych modeli liniowych (GLM):**  
    - **Model 1**: zależność pomiędzy BMI a występowaniem PCOS
    - **Model 2**: wpływ hormonów na ryzyko PCOS 
    - **Model 3**: związek nieregularności cyklu z PCOS 
