@@ -1,0 +1,688 @@
+---
+title: "Projekt zaliczeniowy - Uogólnione Modele Liniowe"
+output: pdf_document
+author: Gomulak Aleksanda, Jędrzejczyk Nikola
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+```
+
+**Importujemy potrzebne biblioteki: **
+
+```{r, warning = FALSE, message = FALSE}
+library("dplyr")
+library("GGally")
+library("tidyr")
+library("ResourceSelection")
+library("statmod")
+```
+
+# Zbiór danych: 
+
+Zbiór danych na jaki się zdecydowałyśmy zawiera wszelkiego rodzaju informacje dotyczące pacjentów przebadanych pod kątem posiadania Zespołu Policystycznych Jajników (PCOS).
+
+W zestawie danych znajdziemy między innymi takie kolumny jak: wiek, waga, regularność miesiączki, czy występują wypryski lub wzmożony porost włosów i tym podobne.
+
+Choroba ta stała się bardzo powszechna na przestrzeni ostatnich lat, w związku z tym kobiety powinny częściej kontrolować wyniki swoich badań i zwracać uwagę na sygnały jakie wysyła im ich ciało.
+
+Co w takim razie może sugerować nam występowanie PCOS? Na co zwrócić uwagę? 
+
+Na podstawie wybranej bazy danych spróbujemy zbadać hipotezy o symptomach choroby, które naszym zdaniem są prawdziwe. 
+
+Dane pobrałyśmy ze strony Kaggle.
+
+\
+
+**Importujemy dane: **
+
+```{r}
+data <- read.csv("PCOS_data.csv")
+```
+
+\newpage
+
+# Opis zmiennych: 
+
+zmienna:              opis:
+--------              ----
+PCOS:                 czy pacjent miał zdiagnozowany PCOS? (0 - nie, 1 - tak)
+Age..yrs.:            wiek pacjenta
+BMI:                  wartość BMI (Body Mass Index) pacjenta
+Pulse.rate.bpm.:      liczbę uderzeń serca (na min)    
+RR..breaths.min.:     liczba oddechów (na min)
+Hb.g.dl.:             poziom hemoglobiny
+Cycle.R.I.:           czy cykl miesiączki jest nieregularny? (0 - nie, 1 - tak)
+Cycle.length.days.:   ilość dni trwania cyklu miesiączki
+Pregnant.Y.N.:        czy pacjent jest w ciąży? (0 - nie, 1 - tak)  
+No..of.abortions:     liczba wykonanych aborcji w całym życiu
+I...beta.HCG.mIU.mL.: poziom kormonu hCG, który jest produkowany w trakcie ciąży
+FSH:                  poziom hormonu niezbędnego do prawidłowego działania jajników oraz jąder
+LH.mIU.mL.:           poziom hormonu LH, niski poziom może być oznaką wolnego dojrzewania
+FSH.LH :              stosunek poziomów FSH do LH we krwi pacjenta
+TSH:                  ilość hormonu, który kontroluje sposób działania innych hormonów
+AMH.ng.mL.:           poziom hormonu, który zapobiega rozwój żeńskich narządów płciowych u płodu męskiego
+PRL.ng.mL.:           poziom prolaktyny, hormonu, który odpowiada za laktację czy rozwój piersi   
+PRG.ng.mL:            poziom hormonu, który zapobiega rozwój męskich narządów płciowych u płodu żeńskiego
+Weight.gain.Y.N.:     czy pacjent przybrał na wadze? (0 - nie, 1 - tak)
+hair.growth.Y.N.:     czy pacjentowi rosną włosy? (0 - nie, 1 - tak)
+Skin.darkening..Y.N.: czy pacjentowi ciemnieje skóra? (0 - nie, 1 - tak) 
+Hair.loss.Y.N.:       czy pacjentowi wypadają włosy? (0 - nie, 1 - tak)
+Pimples.Y.N.:         czy pacjent ma wypryski na twarzy? (0 - nie, 1 - tak)
+BP._Systolic..mmHg.:  skurczowe ciśnienie krwi (systoliczne)
+BP._Diastolic..mmHg.: rozkurczowe ciśnienie krwi (diastoliczne)
+Follicle.No...L.:     liczba pęcherzyków w lewym jajniku wykryta podczas badania
+Follicle.No...R.:     liczba pęcherzyków w prawym jajniku wykryta podczas badania
+Avg..F.size..L...mm.: średnia wielkość pęcherzyków w lewym jajniku (w mm)
+Avg..F.size..R...mm.: średnia wielkość pęcherzyków w prawym jajniku (w mm)
+Endometrium..mm.:     grubość błony śluzowej macicy (w mm)
+           
+# Hipotezy badawcze: 
+
+Zdecydowałyśmy się na zbadanie hipotez, które naszym zdaniem mogą być prawdziwe.
+
+**Hipoteza pierwsza: **
+
+Osoby z zespołem policystycznych jajników mają podwyższone ciśnienie, wyższe BMI i FSH poza normą.
+
+**Hipoteza druga: **
+
+Ciemnienie skóry, pojawianie się wyprysków i nieregularnych miesiączek oznacza chorowanie na zespół policystycznych jajników.
+
+**Hipoteza trzecia: **
+
+Hormon FSH u kobiet pobudza wzrost pęcherzyków w jajniku.
+
+\newpage
+
+# Wstępne czyszczenie i przygotowanie danych do pracy:
+
+Aby doprowadzić do stanu zaprezentowanego powyżej, musimy wykonać pare potrzebnych króków.
+
+**Zaczynamy od usunięcia kolumn, które nas nie interesują lub są niepotrzebne: **
+
+```{r}
+to_drop <- c("Sl..No", "Patient.File.No.", "Weight..Kg.", "Height.Cm.", "Blood.Group", "Hip.inch.", 
+             "Waist.inch.", "Waist.Hip.Ratio", "Fast.food..Y.N.", "Reg.Exercise.Y.N.", 
+             "Marraige.Status..Yrs.", "II....beta.HCG.mIU.mL.", "RBS.mg.dl.", "Vit.D3..ng.mL.")
+
+data <- data[,!(names(data) %in% to_drop)]
+```
+
+
+
+**Na wszelki wypadek usuwamy braki: **
+
+```{r}
+data <- na.omit(data)
+```
+
+\
+
+**Zauważyłyśmy błędne dane w trakcie przygotowywania projektu, w związku z tym czyścimy dane tak, aby ich nie zawierały: **
+
+```{r}
+data <- subset(data, Cycle.R.I. != 5)
+```
+
+```{r}
+data$Cycle.R.I. <- ifelse(data$Cycle.R.I. == 2, 0, ifelse(data$Cycle.R.I. == 4, 1, data$Cycle.R.I.))
+```
+
+\
+
+**Następnie zmianiemy typ danych, w niektórych kolumnach na factor, aby móc w następnych krokach z nich skorzystać: **
+
+```{r}
+data$PCOS..Y.N.<-as.factor(data$PCOS..Y.N.)
+data$Cycle.R.I.<-as.factor(data$Cycle.R.I.)
+data$Weight.gain.Y.N.<-as.factor(data$Weight.gain.Y.N.)
+data$hair.growth.Y.N.<-as.factor(data$hair.growth.Y.N.)
+data$Skin.darkening..Y.N.<-as.factor(data$Skin.darkening..Y.N.)
+data$Hair.loss.Y.N.<-as.factor(data$Hair.loss.Y.N.)
+data$Pimples.Y.N.<-as.factor(data$Pimples.Y.N.)
+data$AMH.ng.mL. <- as.double(data$AMH.ng.mL.)
+```
+
+\
+
+**Sprawdzamy jak wyglądają ilości odpowiedzi, w każdej z kolumn i podstawowe wartości: **
+
+```{r}
+lapply(data, summary)
+```
+\newpage
+
+**Dla wygody zmieniamy niektóre nazwy kolumn: **
+
+```{r}
+names(data)[names(data) == "PCOS..Y.N."] <- "PCOS"
+names(data)[names(data) == "TSH..mIU.L."] <- "TSH"
+names(data)[names(data) == "FSH.mIU.mL."] <- "FSH"
+```
+
+\
+
+# Eksploracyjna analiza danych:
+
+**Na początek sprawdźmy jak prezentują się histogramy dla najbardziej istotnych hormonów: TSH i FSH: **
+
+```{r}
+par(mfrow = c(1, 2))
+hist(data$TSH, main = "Histogram dla TSH", xlab = "Wartości TSH", ylab = "Ilość wystąpień")
+hist(data$FSH, main = "Histogram dla FSH", xlab = "Wartości FSH", ylab = "Ilość wystąpień") 
+```
+
+Musimy usunąć pojedyńcze, duże wartości, aby histogramy były czytelniejsze.
+
+\newpage
+
+```{r}
+data <- subset(data, TSH < 20)
+data <- subset(data, FSH < 20)
+par(mfrow = c(1, 2))
+hist(data$TSH, main = "Histogram dla TSH", xlab = "Wartości TSH", ylab = "Ilość wystąpień")
+hist(data$FSH, main = "Histogram dla FSH", xlab = "Wartości FSH", ylab = "Ilość wystąpień")
+```
+**Wniosek: **
+
+W przypadku TSH widzimy, że większość pacjentów mieści się w normie. Sporo z nich jednak ma ten poziom skrajnie wysoki. Pojawia się też grupa osób, która kilkukrotnie przekracza normę.
+
+Ciężko jednak wywnioskować coś dla poziomu FSH, ponieważ mogą to być jednocześnie osoby, w konkretnym cyklu miesiączki i osoby, które mają wartość poza normę.
+
+\
+
+**Spójrzmy teraz jak rozkładają się różne wartości względem występowania PCOS. To na PCOS skupiamy większość swojej uwagi, ponieważ jest to kluczowa kolumna.**
+
+```{r}
+tab1 <- xtabs(~ PCOS + Cycle.R.I., data %>% select(PCOS, Cycle.R.I.))
+
+p <- c(tab1[1,2], tab1[2,2])
+n <- c(tab1[1,2] + tab1[1,1], tab1[2,1] + tab1[2,2])
+tab1
+```
+**Wniosek: **
+
+Najliczniejszą grupą są badani, którzy nie chorują na PCOS i nie występują u nich nieregularne miesiączki. 
+
+\newpage
+
+```{r}
+tab2 <- xtabs(~ PCOS + Skin.darkening..Y.N., data %>% select(PCOS, Skin.darkening..Y.N.))
+
+p <- c(tab2[1,2], tab2[2,2])
+n <- c(tab2[1,2] + tab2[1,1], tab2[2,1] + tab2[2,2])
+tab2
+```
+**Wniosek: **
+
+Sytuacja osób, kóre nie mają PCOS się nie zmieniła, wyniki są takie same. Jednak dla osób, które chorują na PCOS ciemnienie skóry jest częstsze niż nieregularne miesiączki.
+
+\
+
+```{r}
+tab3 <- xtabs(~ PCOS + Pimples.Y.N., data %>% select(PCOS, Pimples.Y.N.))
+
+p <- c(tab3[1,2], tab3[2,2])
+n <- c(tab3[1,2] + tab3[1,1], tab3[2,1] + tab3[2,2])
+tab3
+```
+**Wniosek: **
+
+Najmniej liczną grupą są osoby chorujące na PCOS i nie posiadające wyprysków. Było to do przewidzenia. Jesteśmy jednak w szoku, że około połowa badanych nie posiada wyprysków, ponieważ jest to coś powszechnego, zależnego nie tylko od PCOS.
+
+\newpage
+
+**Porównajmy jeszcze na wykresie BMI i PCOS: **
+
+```{r}
+ggplot(data, aes(x = BMI, fill = PCOS)) + geom_histogram()
+```
+**Wniosek: **
+
+Rozkład wygląda podobnie, a różnica wynika z tego, że w bazie danych jest dużo mniej osób chorych.
+
+\newpage
+
+**Porównamy jeszcze oba rodzaje ciśnienia krwi: **
+
+Ciśnienie skórczowe:
+
+```{r}
+data <- subset(data, BP._Systolic..mmHg. > 75)
+ggplot(data, aes(x = BP._Systolic..mmHg., fill = PCOS)) + geom_histogram() 
+```
+**Wniosek: **
+Większość badanych ma trochę za niskie ciśnienie skurczowe. Norma jest pomiędzy 120 a 129.
+
+\newpage
+
+Ciśnienie rozkórczowe:
+
+```{r}
+data <- subset(data, BP._Diastolic..mmHg. > 55)
+ggplot(data, aes(x = BP._Diastolic..mmHg., fill = PCOS)) + geom_histogram() 
+```
+**Wniosek: **
+W tym przypadku większość osób ma poprawne ciśnienie rozkurczowe, jednak jest spora grupa osób, która ma to ciśnienie za niskie. 
+
+\newpage
+
+**Dodatkowo spójrzmy jeszcze na występowanie PCOS w zależności od wieku i BMI: **
+
+```{r}
+data_nie <- data[data$PCOS == 0,]
+data_tak <- data[data$PCOS == 1,]
+
+ggplot(data, aes(x = Age..yrs., y = BMI)) +
+geom_point(
+data = data_tak,
+aes(colour = "tak")) +
+geom_point(
+data = data_nie,
+aes(colour = "nie")) + geom_smooth(method = "lm")
+```
+**Wniosek: **
+
+Zauważamy, że więcej osób przed 35 choruje na PCOS niż po 35 roku życia. Wartości BMI rozkładaja się równomiernie. Widoczny jest jedynie bardzo delikatny wzrost BMI wraz z wiekiem.
+
+\newpage
+
+**W następnej kolejności wykonujemy wykres punktowy wykreślając zmienną PCOS względem nieprzekształconej zmiennej FSH: **
+
+```{r}
+data$PCOS <- as.numeric(as.character(data$PCOS))
+
+ggplot(data, aes(x = FSH, y = PCOS)) + geom_point() +
+  geom_smooth(method = "glm", color = "green", se = FALSE, 
+              method.args = list(family = binomial)) +
+  geom_smooth(method = "loess", se  = FALSE, color = 'red')
+```
+**Wniosek: **
+
+Metoda "loess" pokazuję nam linię trendu, która na początku rośnie, żeby następnie "gładko" zmaleć. Uważamy, że metoda "loess" lepiej oddaje stosunek stężenia FSH do występowania zespołu policystycznych jajników.
+
+\newpage
+
+**Porównajmy teraz ten sam przypadek dla zmiennej przekształconej: **
+
+```{r}
+ggplot(data, aes(x = log(FSH), y = PCOS)) + geom_point() +
+  geom_smooth(method = "glm", color = "green", se = FALSE, 
+              method.args = list(family = binomial)) +
+  stat_smooth(method = "loess", se  = FALSE, color = 'red')
+```
+**Wniosek: **
+
+Ponownie widzimy lepsze zachowanie dla metody "loess". Ciężko stwierdzić czy różnica przy zmiennej przekształconej jest dużo lepsza.
+
+\newpage
+
+**Zbudujemy teraz modele dla obu rodzajów zmiennych: **
+
+**Zmienna nieprzekształcona: **
+
+```{r}
+data$PCOS <- as.factor(data$PCOS)
+model.fsh <- glm(PCOS ~ FSH, family = 'binomial', data)
+summary(model.fsh)
+```
+**Wniosek: **
+
+W powyższym przypadku wartość Intercept nie jest statystycznie istotna, natomiast współczynnik FSH jest istotny statystycznie (Pr(>|z|) = 0.00353)
+
+Null deviance mówi o odchyleniu modelu zerowego. Służy on do porównania dopasowania dla innych modeli.
+
+Residual deviance mówi o odchyleniu dla dopasowanego modelu. Różnica pomiędzy null deviance a residual deviance wskazuje jak dobrze dopasowany jest model. Im niższa wartość residual deviance, tym model jest lepiej dopasowany.
+
+AIC mierzy jakość modelu statystycznego. Zawiera w sobie zarówno dopasowanie modelu jak i jego złożoność. Im niższe AIC, tym model jest lepiej dopasowany.
+
+
+Podsumowując, powyższy model mówi, że FSH jest istotnym statystycznie predyktorem występowania zespołu policystycznych jajników. Wraz ze wzrostem FSH o jedną jednostkę, prawdopodobieństwo występowania PCOS maleje o 0.13077, co jest jak najbardziej prawdopodobne, ponieważ osoby z PCOS mają tendencję do posiadania poziomu FSH poniżej normy.
+
+\newpage
+
+**Zmienna przekształcona: **
+
+```{r}
+model.fsh.log <- glm(PCOS ~ log(FSH), family = 'binomial', data)
+summary(model.fsh.log)
+```
+**Wniosek: **
+
+Nie zauważamy większych zmian przy zlogarytmowaniu zmiennej FSH. Dodanie logarytmu nie poprawiło modelu.
+
+\
+
+**Wykonujemy dla nich test Hosmera-Lemeshowa: **
+```{r}
+data$PCOS <- as.numeric(as.character(data$PCOS))
+
+hoslem.test((data %>% select(PCOS, FSH) %>% drop_na())$PCOS, fitted(model.fsh))
+
+hoslem.test((data %>% select(PCOS, FSH) %>% drop_na())$PCOS, fitted(model.fsh.log))
+```
+**Wniosek: **
+
+W obu przypadkach widzimy brak istotnych różnic między obserwowanymi danymi a danymi przewidywanymi przez model. 
+
+Wartość p-value wynosi 0.4048 i 0.1455, sugeruje to, że nie ma powodów do odrzucenia hipotezy zerowej, a to oznacza, że oba modele są odpowiednio dopasowane.
+
+\newpage
+
+**Graficzne porównanie modelu bez przekształconej zmiennej objaśniającej oraz modelu ze zlogarytmowaną zmienną objaśniającą: **
+
+```{r}
+ggplot(data, aes(x = FSH, y = PCOS)) + geom_point(position = position_jitter(height = 0.1)) + 
+      stat_function(fun = function(x) predict(object = model.fsh, newdata = data.frame(FSH = x), 
+      type = 'response'), color = 'blue') + stat_function(fun = function(x) 
+      predict(object = model.fsh.log, newdata = data.frame(FSH = x), type = 'response'), 
+      color = 'red')
+```
+\newpage
+
+**W następnej kolejności postanowiłyśmy przetestować model z dwoma predyktorami dla zmiennych PCOS i FSH: **
+
+Budowa modelu i przeprowadzenie testu: 
+
+```{r}
+data$PCOS <- as.factor(data$PCOS)
+model.two <- glm(PCOS ~ FSH + log2(FSH), binomial, data)
+```
+
+```{r}
+data$PCOS <- as.numeric(as.character(data$PCOS))
+
+hoslem.test((data %>% select(PCOS, FSH) %>% drop_na())$PCOS, fitted(model.two))
+```
+**Wniosek: **
+
+Statystyka testowa X-squared wynosi 2.3091, a stopnie swobody df wynoszą 8. Oznacza to, że testowane dane miały niewielkie różnice od przewidywanych wartości modelu. Ponadto p-value wynosi 0.97.
+
+Model zatem jest bardzo dobrze dopasowany.
+
+\newpage
+
+**Graficzne porównanie wszystkich trzech modeli z PCOS jako zmienną objaśnianą i FSH jako zmienną objaśniającą: **
+
+```{r}
+ggplot(data, aes(x = FSH, y = PCOS)) + 
+  geom_point(position = position_jitter(height = 0.1)) + 
+  stat_function(fun = function(x) predict(object = model.fsh, newdata = data.frame(FSH = x), 
+  type = 'response'), color = 'blue') + stat_function(fun = function(x) predict(object = model.fsh.log, 
+  newdata = data.frame(FSH = x), type = 'response'), color = 'red') + 
+  stat_function(fun = function(x) 
+  predict(object = model.two, newdata = data.frame(FSH = x), type = 'response'), 
+  color = 'green')
+```
+**Wniosek: **
+
+Tak jak potwierdziły to testy Hosmera-Lemeshowa, model z dwoma predyktorami wykazuje najlepsze dopasowanie.
+
+\newpage
+
+**W następnym kroku przeprowadzimy taką samą analizę, ale tym razem dla zmiennej BMI: **
+
+**Dla zmiennej nieprzekształconej:  ** 
+```{r}
+data$PCOS <- as.numeric(as.character(data$PCOS))
+
+ggplot(data, aes(x = BMI, y = PCOS)) + geom_point() +
+  geom_smooth(method="glm", color = "green", se = FALSE, 
+              method.args = list(family = binomial)) +
+  geom_smooth(method = "loess", se  = FALSE, color = 'red')
+```
+**Wniosek: **
+
+Wraz ze wzrostem BMI zauważamy wzrost prawdopodobieństwa wystąpienia PCOS.
+
+\newpage
+
+**Dla zmiennej przekształconej: **
+
+```{r}
+ggplot(data, aes(x = log(BMI), y = PCOS)) + geom_point() +
+  geom_smooth(method="glm", color="green", se = FALSE, 
+              method.args = list(family=binomial)) +
+  stat_smooth(method = "loess", se  = FALSE, color = 'red')
+```
+**Wniosek: **
+Zlogarytmowanie zmiennej objaśniającej nie poprawiło ani nie pogorszyło dopasowania modelu.
+
+\newpage
+
+**Zbudujemy teraz modele dla obu rodzajów zmiennych: **
+
+**Zmienna nieprzekształcona: **
+
+```{r}
+data$PCOS <- as.factor(data$PCOS)
+model.bmi <- glm(PCOS ~ BMI, family = 'binomial', data)
+summary(model.bmi)
+```
+**Wniosek: **
+
+Z modelu wynika, że na wzrost BMI o jedną jednostkę, szansę na cierpienie na zespół policystycznych jajników wzrasta o 0.10426.
+Ponadto można zauważyć, że zarówno Intercept jak i współczynnik BMI są bardzo istotne statystycznie. Sugeruje to mocny związek pomiędzy BMI a występowaniem PCOS.
+
+Parametr dyspersji mierzy dopasowanie modelu, gdy wybrana rodzina to "binomial". Parametr ten, przybierając wartość 1, wskazuje na dobre dopasowanie modelu.
+
+Residual deviance (646.33) jest mniejsza niż null deviance (665.80), co wskazuje na to, że model z BMI jako predyktorem jest lepiej dopasowany niż model zerowy.
+
+Podsumowując, wyniki sugerują, że wraz ze wzrostem poziomu BMI, rośnie szansa na występowanie zespołu policystycznych jajników.
+
+\newpage 
+
+**Zmienna przekształcona: **
+
+```{r}
+data$PCOS <- as.factor(data$PCOS)
+model.bmi.log <- glm(PCOS ~ log(BMI), family = 'binomial', data)
+summary(model.bmi.log)
+```
+**Wniosek: **
+
+Ponownie zlogarytmowanie zmiennej objaśniającej nie zmieniło nic, biorąc pod uwagę dopasowanie modelu.
+
+\
+
+**Teraz również wykonamy test Hosmera-Lemeshowa: **
+
+```{r}
+data$PCOS <- as.numeric(as.character(data$PCOS))
+
+hoslem.test((data %>% select(PCOS, BMI) %>% drop_na())$PCOS, fitted(model.bmi))
+
+hoslem.test((data %>% select(PCOS, BMI) %>% drop_na())$PCOS, fitted(model.bmi.log))
+```
+**wniosek: **
+
+P-value dla pierwszego testu wynosi 0.05811, a to sugeruje brak istotnych różnic między danymi obserwowanymi a danymi przewidywanymi przez model. 
+
+W przypadku drugiego testu wartość p-value wynosi 0.03521, co sugeruje, że istnieją istotne różnice między danymi obserwowanymi a danymi przewidywanymi przez model.
+
+\newpage
+
+**Graficzne porównanie obydwu modeli**
+
+```{r}
+ggplot(data, aes(x = BMI, y = PCOS)) + geom_point(position = position_jitter(height = 0.1)) + 
+  stat_function(fun = function(x) predict(object = model.bmi, newdata = data.frame(BMI = x), 
+  type = 'response'), color = 'blue') + stat_function(fun = function(x) predict(object = model.bmi.log, 
+  newdata = data.frame(BMI = x), type = 'response'), color = 'red')
+```
+
+\
+
+**Tak jak poprzednio budujemy model z dwoma predyktorami: **
+
+```{r}
+data$PCOS <- as.factor(data$PCOS)
+model.twoo <- glm(PCOS ~ BMI + log2(BMI), binomial, data)
+```
+```{r}
+data$PCOS <- as.numeric(as.character(data$PCOS))
+
+hoslem.test((data %>% select(PCOS, BMI) %>% drop_na())$PCOS, fitted(model.twoo))
+```
+**Wniosek: **
+
+Test Hosmera-Lemeshowa mówi nam, że model nie jest najlepiej dopasowany, ponieważ pvalue wynosi 0.07183.
+
+\newpage
+
+**Graficzne porównanie trzech modeli: **
+
+```{r}
+ggplot(data, aes(x = BMI, y = PCOS)) + 
+  geom_point(position = position_jitter(height = 0.1)) + 
+  stat_function(fun = function(x) predict(object = model.bmi, newdata = data.frame(BMI = x), 
+      type = 'response'), color = 'blue') + 
+  stat_function(fun = function(x) predict(object = model.bmi.log, newdata = data.frame(BMI = x), 
+      type = 'response'), color = 'red') + 
+  stat_function(fun = function(x) predict(object = model.twoo, newdata = data.frame(BMI = x), 
+      type = 'response'), color = 'green')
+```
+**Wniosek: **
+
+Zgodnie z wynikami testu Hosmera-Lemeshowa, model z dwoma predyktoramii wygląda na najlepiej dopasowany spośród wszystkich.
+
+\newpage
+
+# Badanie hipotezy pierwszej:
+
+Z uwagi na to, że puls i oba rodzaje ciśnienia są ze sobą ściśle powiązane w organiźmie człowieka, sprawdzimy jak wpływa na model puls.
+
+```{r}
+model.h1 <- glm(PCOS ~ TSH + FSH + Pulse.rate.bpm., binomial, data)
+summary(model.h1)
+```
+
+**Wniosek: **
+
+Przy powyższym modelu współczynnik FSH jest istotny statystycznie (0.00554), puls również, natomiast współczynnik TSH. Puls również jest mniejszy od 0.05.
+
+Odchylenie resztowe jest mniejsze niż odchylenie zerowe, zatem powyższy model jest lepiej dopasowany niż model zerowy.
+
+\
+
+**Co wykaże test?**
+```{r}
+data$PCOS <- as.numeric(as.character(data$PCOS))
+
+hoslem.test((data %>% select(PCOS, FSH, TSH, Pulse.rate.bpm.) %>% drop_na())$PCOS, fitted(model.h1))
+```
+**Wniosek: **
+
+Test wskazuje na bardzo dobre dopasowanie modelu, ze względu na p-value na poziomie 0.6363, czyli znacznie większym niż przyjęty przez nas poziom istotności.
+
+Możemy zatem założyć, że hipoteza jest prawdziwa.
+
+\newpage
+
+# Badanie hipotezy dugiej:
+
+**Zbudujemy na początek model zawierający zmienne z hipotezy: **
+
+```{r}
+model.h2 <- glm(PCOS ~ Cycle.R.I. + Skin.darkening..Y.N. + Pimples.Y.N., binomial, data)
+summary(model.h2)
+```
+
+**Wniosek: **
+
+Wszystkie współczynniki użyte w powyższym modelu są istotne statystcznie. Ponadto odchylenie resztowe jest widocznie mniejsze niż zerowe (sugerując się wcześniejszymi modelami, ten model jest najlepszy względem przyjętego modelu zerowego). 
+
+Dodatkowo AIC również jest najmniejsze niż w którymkolwiek innym modelu. 
+
+Oznacza to, że występowanie nieregularnej miesiączki, ciemnienie skóry oraz wypryski są dobrymi predyktorami występowania zespołu policystycznych jajników.
+
+\newpage
+
+**Wykonujemy test: **
+
+```{r}
+data$PCOS <- as.numeric(as.character(data$PCOS))
+
+hoslem.test((data %>% select(PCOS, Cycle.R.I., Skin.darkening..Y.N., Pimples.Y.N.) %>% 
+            drop_na())$PCOS, fitted(model.h2))
+```
+**Wniosek: **
+
+Wyniki powyższego testu mówią o bardzo dobrym dopasowaniu modelu do danych.
+
+W związku z tym potwierdzamy naszą hipotezę, że ciemnienie skóry, pojawianie się wyprysków i nieregularnych miesiączek może świadczyć o chorowaniu na zespół policystycznych jajników.
+
+Odstawmy jednak statystykę i testy na bok. Oczywistym jest, że występowanie powyższych objawów nie determinuje chorowania na PCOS. Jednak większość osób chorujących na omawiana przez nas chorobę, skarży się na te objawy - stąd tak dobre dopasowanie modelu.
+
+\newpage
+
+# Badanie hipotezy trzeciej:
+
+Z uwagi na to, że hormon FSH u kobiet pobudza wzrost pęcherzyków jajnikowych w jajniku, sprawdźmy czy model to potwierdzi.
+
+```{r}
+model.h3 <- lm(Follicle.No...L. ~ FSH, data)
+summary(model.h3)
+```
+
+**Wniosek: **
+
+Powyższy model liniowy potwierdza, że FSH jako zmienna objaśniająca jest istotna statystycznie. Oznacza to, że poziom FSH istotnie wpływa na ilość pęcherzyków w jajnikach.
+
+Warto jednak zauważyć, że Multiple R-squared wynosi jedynie 0.02303, co oznacza, że FSH jako zmienna objaśniająca, wyjaśnia małą część powodów, dla których liczba pęcherzyków w jajnikach ulega zmianie.
+
+\newpage
+
+**Wykresy diagnostyczne: **
+
+```{r}
+par(mfrow = c(2, 2))
+plot(model.h3)
+```
+**wniosek: **
+
+Pomimo, że wykresy diagnostyczne już wyglądają bardzo dobrze, w związku z tym, sprawdzimy czy model regresji ważonej będzie lepszym dopasowaniem.
+
+\
+
+**Na początek stworzymy model pomocniczy: **
+
+Użyjemy wartości bezwzględnej modelu reszt oraz wartości dopasowanych.
+
+```{r}
+model.h3.resid <- lm(abs(resid(model.h3)) ~ fitted(model.h3))
+```
+
+\
+
+**Tworzymy wagi: **
+
+```{r}
+s <- fitted(model.h3.resid)
+model.weights <- 1 / s^2 
+```
+
+\newpage
+
+**Model regresji ważonej: **
+
+```{r}
+model.h3.weighted <- lm(Follicle.No...L. ~ FSH, data, weights = model.weights)
+summary(model.h3.weighted)
+```
+
+**Wniosek: **
+
+Analiza modelu regresji ważonej potwierdziła, że poziom FSH jest istotny statystycznie dla ilości pęcherzyków w jajnikach.
+
+P-value na poziomie 0.000143 dla FSH oznacza, że istnieją statystycznie istotne dowody na istnienie zależności między zmienną niezależną (FSH) a zmienną zależną (Follicle.No...L.).
+
+Współczynnik determinacji R-squared wynosi 0.0271, co jest niewielką zmianą w porównaniu do oryginalnego modelu.
+
+Wartość statystyki F - 14.68 i niska p-value sugerują, że istnieje statystycznie istotna zależność między zmiennymi FSH i Follicle.No...L.
+
+Jednakże, ze względu na niski współczynnik determinacji, model nie wyjaśnia dużego odsetka zmienności zmiennej zależnej.
+
+Podsumowaując: Zadana przez nas hipoteza jest prawdziwa i poziom FSH ma istotny wpływ na liczbę pęcherzyków w jajnikach. Trzeba jednak pamiętać, że nie jest to jedyna zmienna mająca wpływ na ilość pęcherzyków. FSH jako jedyny predyktor nie jest wystarczająco silny do przewidzenia ilości pęcherzyków w jajnikach i do podwyższenia współczynnika determinacji potrzebna by była bardziej dogłębna analiza.
+
